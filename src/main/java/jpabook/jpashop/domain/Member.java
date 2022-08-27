@@ -11,7 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Getter @Setter
+@Getter
+@Setter
 public class Member {
     @Id @GeneratedValue
     @Column(name = "member_id")
@@ -30,7 +31,5 @@ public class Member {
     private List<Order> orders = new ArrayList<>();
     // ** 컬렉션을 어떻게 초기화하는 게 좋을까? => 바로 초기화하는게 좋음
     // 하이버네티트 메커니즘에 문제 발생할 수 있음.
-
-
 
 }

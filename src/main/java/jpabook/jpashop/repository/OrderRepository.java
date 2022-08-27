@@ -2,6 +2,7 @@ package jpabook.jpashop.repository;
 
 import jpabook.jpashop.domain.Member;
 import jpabook.jpashop.domain.Order;
+import jpabook.jpashop.repository.order.query.OrderQueryDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
@@ -30,16 +31,17 @@ public class OrderRepository { // 핵심 비즈니스로직이 있는 repository
         return em.find(Order.class, id);
     }
 
-    public List<Order> findAll(OrderSearch orderSearch){
+    public List<Order> findAll(OrderSearch orderSearch) {
         return em.createQuery("select o from Order" +
-                " join o.member m" +
-                " where o.status = :status "+
-                " and m.name like :name", Order.class
-        ).setParameter("status", orderSearch.getOrderStatus())
+                        " join o.member m" +
+                        " where o.status = :status " +
+                        " and m.name like :name", Order.class
+                ).setParameter("status", orderSearch.getOrderStatus())
                 .setParameter("name", orderSearch.getMemberName())
                 .setMaxResults(1000) //최대 1000건
                 .getResultList();
     }
+
     public List<Order> findAllByCriteria(OrderSearch orderSearch) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Order> cq = cb.createQuery(Order.class);
@@ -66,8 +68,8 @@ public class OrderRepository { // 핵심 비즈니스로직이 있는 repository
 
     public List<Order> findAllWithMemberDelivery() {
         return em.createQuery(
-                "select o from Order o"+
-                        " join fetch o.member m"+ // left join  으로 바꿔도됨.
+                "select o from Order o" +
+                        " join fetch o.member m" +
                         " join fetch o.delivery d", Order.class // 이미 조인상태로 나오기 때문에 지연로딩일 일어나지 않음.
         ).getResultList();
     }
@@ -89,11 +91,11 @@ public class OrderRepository { // 핵심 비즈니스로직이 있는 repository
     // findOrderDtos 같은 경우은 repository 를 새로 추가해서 분리
 
     public List<Order> findAllWithItem() {  //  distinct처리시 jpa 가 조회한 id값이 동일하면 둘중하나를 버리는 기능. => Order객체의 id가 동일하면 둘중하나삭제.
-        return em.createQuery("select distinct o from Order o"+ // distinct 추가 중복제거 => db에서 쓰는 distinct 랑은 다름.
-                                    " join fetch o.member m"+
-                                    " join fetch o.delivery d "+ // 여기까지는 1대 1 관계라 괜찮은데
-                                    " join fetch o.orderItems oi"+  // 1대 다관계 - 주문한건당 주문아이템이 두건이어서 주문과 조인을 하면
-                                    " join fetch oi.item i", Order.class)
+        return em.createQuery("select distinct o from Order o" + // distinct 추가 중복제거 => db에서 쓰는 distinct 랑은 다름.
+                        " join fetch o.member m" +
+                        " join fetch o.delivery d " + // 여기까지는 1대 1 관계라 괜찮은데
+                        " join fetch o.orderItems oi" +  // 1대 다관계 - 주문한건당 주문아이템이 두건이어서 주문과 조인을 하면
+                        " join fetch oi.item i", Order.class)
                 .setFirstResult(0) // fetch join 사용했는데 페이징 처리시 경고나옴.
                 .setMaxResults(100)  // => 일대다 조인이 된순간 모수는 다건에 해당되는 orderItem 에 맞춰서 페이지 처리를 하게 되는데
                 .getResultList(); // 주문건이 2row가 발생함. 이를 중복제거처리                          //jpa 입장에서는 order 건을 페이징이불가능해짐..
@@ -104,16 +106,18 @@ public class OrderRepository { // 핵심 비즈니스로직이 있는 repository
 
     public List<Order> findAllWithMemberDelivery(int offset, int limit) {
         return em.createQuery(
-                "select o from Order o"+
-                        " join fetch o.member m"+ // left join  으로 바꿔도됨.
-                        " join fetch o.delivery d", Order.class // 이미 조인상태로 나오기 때문에 지연로딩일 일어나지 않음.
+                        "select o from Order o" +
+                                " join fetch o.member m" + // left join  으로 바꿔도됨.
+                                " join fetch o.delivery d", Order.class // 이미 조인상태로 나오기 때문에 지연로딩일 일어나지 않음.
                         //"select o from Order o", Order.class //이렇게만 하면 되긴하는데 엔티티별로 단간의 쿼리를날려 in절로 조회해오긴하지만
-                                                                    // toOne관계에서는 fetch조인으로 한번에 가져오는 것이 좋음. 이처럼 하면
-                                                                    // 오히려 네트워크 전송량이 늘어남,날리는 쿼리가 많아지니까.
-       ).setFirstResult(offset) // 0부터 시작.
+                        // toOne관계에서는 fetch조인으로 한번에 가져오는 것이 좋음. 이처럼 하면
+                        // 오히려 네트워크 전송량이 늘어남,날리는 쿼리가 많아지니까.
+                ).setFirstResult(offset) // 0부터 시작.
                 .setMaxResults(limit)
                 .getResultList();
     }
+
+
 
     public List<Order> getOrderAll(Long orderId) {
 
@@ -126,11 +130,12 @@ public class OrderRepository { // 핵심 비즈니스로직이 있는 repository
                 .getResultList();*/
         return em.createQuery(
                         "select o from Order o " +
-                                "join o.member m "+
-                    "join o.delivery d "
+                                "join o.member m " +
+                                "join o.delivery d "
                 )
                 .getResultList();
     }
+
     // 다른 기능 개발용 브랜치 생성 test.sy2
     public List getOrderAll2(Long orderId) {
         return em.createQuery("select o from Order o " +
@@ -138,5 +143,28 @@ public class OrderRepository { // 핵심 비즈니스로직이 있는 repository
     }
 
 
+
+
+
+    // ----------------------------개인 테스트
+
+    public List<Order> searchOrderList() {
+        return em.createQuery(
+                "select distinct o from Order o " +
+                        "join fetch o.orderItems oi "
+        ).getResultList();
+    }
+
+
+    public List<Order> searchOrderList2(int offset, int limit) {
+
+        return em.createQuery(
+                        "select o from Order o " +
+                                "join fetch o.member m " +
+                                "join fetch o.delivery d "
+                ).setFirstResult(offset)
+                .setMaxResults(limit)
+                .getResultList();
+    }
 }
 

@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
 import javax.persistence.EntityManager;
+import java.time.LocalDate;
 
 /**
  * 총 주문 2개
@@ -29,6 +30,8 @@ public class InitDb {
         initService.dbInit1(); // 메서드 굳이 안만들고 이안에 다 넣으면 안되나?
         // => 안에서 스프링 라이프 사이클 때문에 트랜젝션처리하는게 안됨. 별도의 빈으로 등록.
         initService.dbInit2();
+
+        initService.dbInit3();
     }
 
     @Component
@@ -78,6 +81,15 @@ public class InitDb {
 
         }
 
+        public void dbInit3(){
+            StmpMaster stmpMaster = createStmpMaster("STMP-0001"
+                    , "스탬프행사1", 5
+                    , LocalDate.of(2023, 8,1)
+                    , LocalDate.of(2023, 8,30));
+
+            em.persist(stmpMaster);
+        }
+
         private Delivery createDelivery(Member member) {
             Delivery delivery = new Delivery();
             delivery.setAddress(member.getAddress());
@@ -97,6 +109,21 @@ public class InitDb {
             member.setName(user);
             member.setAddress(new Address(address, street, zip));
             return member;
+        }
+
+        private StmpMaster createStmpMaster(String stmpNo
+                , String name
+                , Integer accumCcnt
+                , LocalDate validStartDt, LocalDate validEndDt){
+            StmpMaster stmpMaster = StmpMaster.builder()
+                    .stmpNo(stmpNo)
+                    .name(name)
+                    .accumCcnt(accumCcnt)
+                    .validStrtDt(validStartDt)
+                    .validEndDt(validEndDt)
+                    .build();
+
+            return stmpMaster;
         }
 
     }

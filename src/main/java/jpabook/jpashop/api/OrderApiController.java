@@ -6,6 +6,8 @@ import jpabook.jpashop.domain.OrderItem;
 import jpabook.jpashop.domain.OrderStatus;
 import jpabook.jpashop.repository.OrderRepository;
 import jpabook.jpashop.repository.OrderSearch;
+import jpabook.jpashop.repository.order.query.OrderFlatDTO;
+import jpabook.jpashop.repository.order.query.OrderItemQueryDto;
 import jpabook.jpashop.repository.order.query.OrderQueryDto;
 import jpabook.jpashop.repository.order.query.OrderQueryRepository;
 import lombok.Data;
@@ -16,8 +18,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
 
 @RestController
 @RequiredArgsConstructor
@@ -26,16 +34,15 @@ public class OrderApiController {
     final private OrderQueryRepository orderQueryRepository;
 
 
-
     // OneToMany 일대다 관계 (주문 - 주문아이템) 최적화 처리
     // 엔티티 직접 노출
     @GetMapping("/api/v1/orders")
-    public List<Order> orderV1(){
+    public List<Order> orderV1() {
         List<Order> all = orderRepository.findAllByCriteria(new OrderSearch());
-        for(Order order : all){
+        for (Order order : all) {
             order.getMember().getName();  // 이름
             order.getDelivery().getAddress();
-            
+
             List<OrderItem> orderItems = order.getOrderItems();
             orderItems.stream().forEach(o -> o.getItem().getName()); // Lazy 강제 초기화
             // hibernate5Module 기본값으로 설정되어있으면 프록시 객체는 데이터를 안뿌리게 되서
@@ -44,22 +51,24 @@ public class OrderApiController {
         }
         return all;
     }
+
     // 엔티티 DTO로 변경
     @GetMapping("/api/v2/orders")
-    public List<OrderDto> orderV2(){
+    public List<OrderDto> orderV2() {
         List<Order> orders = orderRepository.findAllByCriteria(new OrderSearch());
         List<OrderDto> collect = orders.stream().map(OrderDto::new) // new OrderDto(o)
                 .collect(Collectors.toList());
         return collect;
     }
+
     //                       fetch join 사용으로 여러건나가던 쿼리가 쿼리 하나 실행으로 처리됨.
     // fetch join 으로 최적화.=> 이 처리를 통해 리포지토리단만 수정하면됨 아래 메서드단은 고칠게 없음.
     @GetMapping("/api/v3/orders")
-    public List<OrderDto> orderV3(){
+    public List<OrderDto> orderV3() {
         List<Order> orders = orderRepository.findAllWithItem();
 
-        for(Order order : orders){
-            System.out.println("order ref = "+order+"orderId = "+order.getId());
+        for (Order order : orders) {
+            System.out.println("order ref = " + order + "orderId = " + order.getId());
         }
 
         List<OrderDto> collect = orders.stream().map(OrderDto::new) // new OrderDto(o)
@@ -74,8 +83,8 @@ public class OrderApiController {
     // 아래 건은 중복건이 제거된 최적화된 쿼리로 전송하게 된다. => 데이터 전송량이 줄어듬.
     // 네트워크 호출하는 횟수와 네트워크 전송량것과 trade off가 발생한다.
     @GetMapping("/api/v3.1/orders") // order+member+deliver 1건 => orderitem 1건=> item 1 / item 2  * 2
-    public List<OrderDto> orderV3_page (@RequestParam(value="offset", defaultValue = "0") int offset ,
-                                        @RequestParam(value="limit", defaultValue = "100") int limit) {
+    public List<OrderDto> orderV3_page(@RequestParam(value = "offset", defaultValue = "0") int offset,
+                                       @RequestParam(value = "limit", defaultValue = "100") int limit) {
         // toOne 관계는 fetch 조인으로 가져 오기
         List<Order> orders = orderRepository.findAllWithMemberDelivery(offset, limit);
         // 나머지는 지연로딩 프록시 초기화를 통해서 가져오기.
@@ -87,12 +96,36 @@ public class OrderApiController {
     //hibernate에 최적화 되어있는 기능임. => order+member+deliver 1 => orderitem  1 => item 1 로 최적화 가능.
 
     @GetMapping("/api/v4/orders")
-    public List<OrderQueryDto> ordersV4(){
+    public List<OrderQueryDto> ordersV4() {
         List<OrderQueryDto> result = orderQueryRepository.findOrderQueryDtos();
         return result;
     }
 
+    @GetMapping("/api/v5/orders")
+    public List<OrderQueryDto> orderV5() {
+        List<OrderQueryDto> result = orderQueryRepository.findAllByDto_optimization();
+        return result;
+    }
 
+    @GetMapping("/api/v6/orders")
+    public List<OrderQueryDto> orderV6() {
+        List<OrderFlatDTO> orderFlatList = orderQueryRepository.findAllByDto_flat();
+
+
+        List<OrderQueryDto> result = orderFlatList.stream()
+                .collect(getOrderFlatDTOMapCollector()).entrySet().stream()
+                .map(e -> new OrderQueryDto(e.getKey().getOrderId(),
+                        e.getKey().getName(), e.getKey().getOrderDate(), e.getKey().getOrderStatus(),
+                        e.getKey().getAddress(), e.getValue()))
+                .collect(Collectors.toList());
+        return result;
+    }
+
+    private static Collector<OrderFlatDTO, ?, Map<OrderQueryDto, List<OrderItemQueryDto>>> getOrderFlatDTOMapCollector() {
+        return groupingBy(o -> new OrderQueryDto(o.getOrderId(), o.getName(), o.getOrderDate(), o.getOrderStatus(), o.getAddress()),
+                mapping(o -> new OrderItemQueryDto(o.getOrderId(), o.getItemName(), o.getOrderPrice(), o.getCount()), Collectors.toList())
+        );
+    }
 
     @Data // @Getter만 해도됨.
     static class OrderDto { // DTO를 반환하라 => 코드상에서도 엔티티와 의존되지 않게 작성해야함. // 단 valueObject 같은 거는 그냥 노출해도됨. Address같은거
@@ -101,31 +134,32 @@ public class OrderApiController {
         private LocalDateTime orderDate;
         private OrderStatus orderStatus;
         private Address address;
-        //private List<OrderItem> orderItems;
+        //   private List<OrderItem> orderItems;
         private List<OrderItemDto> orderItems;
 
-        public OrderDto(Order order){
+        public OrderDto(Order order) {
             this.orderId = order.getId();
             this.name = order.getMember().getName(); // lazy 초기화.
-            this.orderDate= order.getOrderDate();
+            this.orderDate = order.getOrderDate();
             this.orderStatus = order.getStatus();
             this.address = order.getDelivery().getAddress();
-//            order.getOrderItems().forEach(o -> o.getItem().getName());
-//            this.orderItems = order.getOrderItems();  // ㅐorderItems 엔티티의 스팩이 다 노출되게 됨.
+            //          order.getOrderItems().forEach(o -> o.getItem().getName());
+            // this.orderItems = order.getOrderItems();  // ㅐorderItems 엔티티의 스팩이 다 노출되게 됨.
             this.orderItems = order.getOrderItems().stream() // dto를 하나더 만들어서 필요한 스팩만 노출되도록 감싸주기.
                     .map(OrderItemDto::new) // new orderItemDto(o)
                     .collect(Collectors.toList());
         }
 
     }
+
     @Getter
-    static class OrderItemDto{
+    static class OrderItemDto {
         private String itemName;
         private int orderPrice;
         private int count;
 
 
-        public OrderItemDto(OrderItem orderItem){
+        public OrderItemDto(OrderItem orderItem) {
             this.itemName = orderItem.getItem().getName();
             this.orderPrice = orderItem.getItem().getPrice();
             this.count = orderItem.getItem().getStockQuantity();
