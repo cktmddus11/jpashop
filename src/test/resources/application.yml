@@ -1,0 +1,30 @@
+##### database connection info
+spring:
+  output:
+    ansi:
+      enabled: always
+#  datasource:
+#    url: jdbc:h2:mem:test
+#    username: sa
+#    password:
+#    driver-class-name: org.h2.Driver
+#
+####### jpa
+  jpa:
+#    hibernate:
+#      ddl-auto: create # 애플리케이션 실행 시점에 테이블 drop후 다시 생성
+    properties:
+      hibernate:
+#         show_sql: true   # 시스템 아웃에 출력
+         format_sql: true
+
+####### log
+logging:
+  level:
+    org.hibernate.SQL: debug  # 로거에 출력
+    org.hibernate.type: trace
+
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: true
