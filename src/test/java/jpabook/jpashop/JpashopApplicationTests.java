@@ -9,5 +9,5 @@ class JpashopApplicationTests {
 	@Test
 	void contextLoads() {
 	}
-// 머지테스트
+// 머지테스트 //하나더 커밋
 }
