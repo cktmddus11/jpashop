@@ -34,12 +34,9 @@ public class RealTest {
     @Test
     @DisplayName("N+1문제 확인")
     public void NPlusOneTest(){
-        System.out.println("+===========================");
         List<Order> orders = orderRepository.getOrderAll(null);
-        System.out.println("+===========================");
         orders.stream().map(order -> order.getMember().getName())
                 .forEach(System.out::println);
-        System.out.println("+===========================");
     }
 
     @Test
