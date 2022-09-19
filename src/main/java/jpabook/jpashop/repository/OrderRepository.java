@@ -131,7 +131,7 @@ public class OrderRepository { // 핵심 비즈니스로직이 있는 repository
                 )
                 .getResultList();
     }
-
+    // 다른 기능 개발용 브랜치 생성 test.sy2
     public List getOrderAll2(Long orderId) {
         return em.createQuery("select o from Order o " +
                 "join fetch o.member").getResultList();
