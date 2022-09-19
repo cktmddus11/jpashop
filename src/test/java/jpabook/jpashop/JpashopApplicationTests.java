@@ -8,6 +8,7 @@ class JpashopApplicationTests {
 
 	@Test
 	void contextLoads() {
+		System.out.println("커밋1");
 	}
 
 }
